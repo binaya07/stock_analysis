@@ -24,3 +24,8 @@ spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 --maste
 ```
 spark-submit --master local post_transformer.py
 ```
+
+6. Run flask app.
+```
+python web.py
+```
