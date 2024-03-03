@@ -35,6 +35,24 @@ def plot():
         plt.xlabel("Date")
         plt.ylabel("Moving Average")
         plt.title(f"SMA Comparison for {selected_symbol}")
+
+        # Find crossover points
+        buy_crossover_points = []
+        sell_crossover_points = []
+        for i in range(1, len(sma_50_data)):
+            if sma_50_data.iloc[i-1]["moving_avg_50"] < sma_200_data.iloc[i-1]["moving_avg_200"] and \
+               sma_50_data.iloc[i]["moving_avg_50"] > sma_200_data.iloc[i]["moving_avg_200"]:
+                buy_crossover_points.append(sma_50_data.iloc[i]["date"])
+            if sma_50_data.iloc[i-1]["moving_avg_50"] > sma_200_data.iloc[i-1]["moving_avg_200"] and \
+               sma_50_data.iloc[i]["moving_avg_50"] < sma_200_data.iloc[i]["moving_avg_200"]:
+                sell_crossover_points.append(sma_50_data.iloc[i]["date"])
+
+        # Plot crossover points
+        plt.scatter(buy_crossover_points, sma_50_data[sma_50_data["date"].isin(buy_crossover_points)]["moving_avg_50"],
+                    color='lime', label='Buy Signal', marker='^')
+        plt.scatter(sell_crossover_points, sma_50_data[sma_50_data["date"].isin(sell_crossover_points)]["moving_avg_50"],
+                    color='red', label='Sell Signal', marker='^')
+
         plt.legend()
 
         plt.xticks(rotation=45)
