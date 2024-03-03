@@ -9,12 +9,13 @@ spark = SparkSession.builder \
 
 # Define Kafka parameters
 kafka_bootstrap_servers = "localhost:9093"
-kafka_topic = "stock_data"
+kafka_topic = "stocks"
 
 # Define Kafka source options
 kafka_options = {
     "kafka.bootstrap.servers": kafka_bootstrap_servers,
-    "subscribe": kafka_topic
+    "subscribe": kafka_topic,
+    "startingOffsets": "earliest"
 }
 
 # Read data from Kafka topic
@@ -22,6 +23,7 @@ df = spark.readStream \
     .format("kafka") \
     .options(**kafka_options) \
     .load()
+
 
 # Define schema for the incoming data
 schema = StructType([
@@ -33,44 +35,38 @@ schema = StructType([
 # Parse JSON data from Kafka and apply schema
 parsed_df = df.selectExpr("CAST(value AS STRING)") \
     .select(from_json("value", schema).alias("data")) \
-    .select("data.symbol", "data.date", explode("data.data").alias("metric", "value"))
+    .select("data.symbol", "data.date", 
+            col("data.data").getItem("Open").alias("open"),
+            col("data.data").getItem("Close").alias("close"),
+            col("data.data").getItem("High").alias("high"),
+            col("data.data").getItem("Low").alias("low"),
+            col("data.data").getItem("Volume").alias("volume"))
 
-# Perform transformations
-transformed_df = parsed_df.groupBy("symbol", "date").agg(
-    sum("value").alias("total_value")
-)
+parsed_df_with_col = parsed_df.withColumn("timestamp", to_timestamp("date"))
 
-# Calculate simple moving average for 50 days and 200 days
-transformed_df = transformed_df.withColumn("sma_50_days", avg("total_value").over(Window.partitionBy("symbol").orderBy("date").rowsBetween(-49, 0))) \
-    .withColumn("sma_200_days", avg("total_value").over(Window.partitionBy("symbol").orderBy("date").rowsBetween(-199, 0)))
 
-# Calculate RSI (Relative Strength Index)
-window_spec = Window.partitionBy("symbol").orderBy("date").rowsBetween(-13, 0)
-change = transformed_df["total_value"] - lag(transformed_df["total_value"]).over(window_spec)
-gain = when(change > 0, change).otherwise(0)
-loss = when(change < 0, abs(change)).otherwise(0)
-avg_gain = avg(gain).over(window_spec)
-avg_loss = avg(loss).over(window_spec)
-rs = avg_gain / avg_loss
-rsi = 100 - (100 / (1 + rs))
-transformed_df = transformed_df.withColumn("rsi", when(avg_loss == 0, 100).otherwise(rsi))
+# Define watermark to handle late arriving data (1 day in this example)
+watermark_duration = "1 day"
+parsed_df_with_watermark = parsed_df_with_col.withWatermark("timestamp", watermark_duration)
 
-# Do weekly, monthly, and yearly time-based aggregation
-transformed_df = transformed_df.withColumn("week", weekofyear("date")) \
-    .withColumn("month", month("date")) \
-    .withColumn("year", year("date")) \
-    .groupBy("symbol", "week", "month", "year").agg(
-        avg("total_value").alias("avg_total_value"),
-        avg("sma_50_days").alias("avg_sma_50_days"),
-        avg("sma_200_days").alias("avg_sma_200_days"),
-        avg("rsi").alias("avg_rsi")
-    )
+# Define a sliding window of 50 days
+window_duration = "50 days"
+slide_duration = "1 day"
 
-# Print the transformed data
-query = transformed_df.writeStream \
-    .outputMode("update") \
-    .format("console") \
+# Calculate the 50-day moving average for each symbol within the sliding window
+moving_avg_df = parsed_df_with_watermark.groupBy("symbol", window("timestamp", window_duration, slide_duration)) \
+    .agg(avg("close").alias("moving_avg_50"))
+moving_avg_df_f = moving_avg_df.select("symbol", to_date("window.end").alias("date"), "moving_avg_50")
+
+# Define the output directory for the Parquet files
+sma_output_directory = "parquet/sma"
+sma_checkpoint_location = "parquet/sma/checkpoint"
+# Start the streaming query to write results to Parquet files
+query = moving_avg_df_f.writeStream \
+    .outputMode("append") \
+    .format("parquet") \
+    .option("path", sma_output_directory) \
+    .option("checkpointLocation", sma_checkpoint_location) \
     .start()
-
 # Wait for the query to terminate
 query.awaitTermination()

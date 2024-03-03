@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Analysis - {{ symbol }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1jOUuKMEI7e/BxIkp5SAQ77xiYVf5zBpX1rxHhkzzT4vDhgwXP" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>SMA for {{ symbol }}</h2>
+        {% if image_data %}
+            <img src="data:image/png;base64,{{ image_data }}" alt="SMA Comparison Plot">
+        {% else %}
+            <p>No data found for the selected symbol.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

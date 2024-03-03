@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Analysis</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1jOUuKMEI7e/BxIkp5SAQ77xiYVf5zBpX1rxHhkzzT4vDhgwXP" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Stock Analysis</h1>
+        <form method="POST" action="/plot">
+            <div class="form-group">
+                <label for="symbol">Select Stock Symbol:</label>
+                <select class="form-control" id="symbol" name="symbol">
+                    {% for symbol in symbols %}
+                        <option value="{{ symbol }}">{{ symbol }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Plot SMAs</button>
+        </form>
+    </div>
+</body>
+</html>

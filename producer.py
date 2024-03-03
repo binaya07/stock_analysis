@@ -8,13 +8,13 @@ import pandas as pd
 bootstrap_servers = 'localhost:9093'
 
 # Define the Kafka topic
-topic = 'stock_data'
+topic = 'stocks'
 
 # Define the list of ticker symbols
 ticker_symbols = ['SPY', 'AAPL', 'MSFT', 'TSLA', 'NVDA', 'AMZN', 'GOOG', 'META', 'JPM', 'GME']
 
 # Define start and end dates
-start_date = '2023-01-01'  # Ten years ago
+start_date = '2014-01-01'  # Ten years ago
 end_date = '2024-01-01'  # Today
 
 # Fetch historical data for each ticker symbol
